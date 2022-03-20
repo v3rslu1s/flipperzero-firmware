@@ -46,6 +46,7 @@ extern int32_t battery_test_app(void* p);
 // Plugins
 extern int32_t music_player_app(void* p);
 extern int32_t snake_game_app(void* p);
+extern int32_t flappy_game_app(void* p); 
 
 // On system start hooks declaration
 extern void bt_on_system_start();
