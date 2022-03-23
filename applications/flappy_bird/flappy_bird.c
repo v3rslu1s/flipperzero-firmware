@@ -145,9 +145,17 @@ int32_t flappy_game_app(void* p) {
 
                     switch(event.input.key) {
                     case InputKeyUp: 
+                            game_state->bird.point.y++;
+                        break; 
                     case InputKeyDown: 
+                            game_state->bird.point.y--;
+                        break; 
                     case InputKeyRight: 
-                    case InputKeyLeft: 
+                            game_state->bird.point.x++;
+                        break; 
+                    case InputKeyLeft:  
+                            game_state->bird.point.y--;
+                        break; 
                     case InputKeyOk: 
                     case InputKeyBack:
                         FURI_LOG_D(TAG, "processing = false;");
