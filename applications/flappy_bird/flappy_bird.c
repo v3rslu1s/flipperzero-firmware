@@ -11,6 +11,9 @@
 #define FLAPPY_GAB_HEIGHT   25
 #define FLAPPY_GAB_WIDTH    3
 
+#define FLAPPY_GRAVITY_JUMP -1.1
+#define FLAPPY_GRAVITY_TICK 0.15
+
 #define FLIPPER_LCD_WIDTH   128
 #define FLIPPER_LCD_HEIGHT  64
 
@@ -55,25 +58,58 @@ typedef enum {
     DirectionLeft,
 } Direction;
 
-
-uint8_t bird_array[15][11] = {
-    {0,0,0,0,0,0,1,1,0,0,0},
-    {0,0,0,0,0,1,0,0,1,0,0},
-    {0,0,0,0,0,1,0,0,0,1,0},
-    {0,0,1,1,1,1,0,0,0,1,0},
-    {0,1,0,0,0,1,0,0,0,1,0},
-    {0,1,0,0,0,0,1,0,1,0,1},
-    {1,0,0,0,0,0,0,1,0,0,1},
-    {1,0,1,1,1,0,0,1,0,0,1},
-    {1,1,0,0,0,0,1,0,1,0,1},
-    {1,0,0,0,0,1,0,1,0,1,0},
-    {1,0,0,0,0,1,0,1,0,1,0},
-    {0,1,0,1,1,1,0,1,0,1,0},
-    {0,0,1,0,0,1,0,1,0,1,0},
-    {0,0,0,1,1,1,0,1,0,1,0},
-    {0,0,0,0,0,0,1,1,1,0,0},
+uint8_t bird[3][15][11] = {
+    {
+        {0,0,0,0,0,0,1,1,0,0,0},
+        {0,0,0,0,0,1,0,0,1,0,0},
+        {0,0,0,0,0,1,0,0,0,1,0},
+        {0,0,1,1,1,1,0,0,0,1,0},
+        {0,1,0,0,0,1,0,0,0,1,0},
+        {0,1,0,0,0,0,1,0,1,0,1},
+        {1,0,0,0,0,0,0,1,0,0,1},
+        {1,0,1,1,1,0,0,1,0,0,1},
+        {1,1,0,0,0,0,1,0,1,0,1},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {0,1,0,1,1,1,0,1,0,1,0},
+        {0,0,1,0,0,1,0,1,0,1,0},
+        {0,0,0,1,1,1,0,1,0,1,0},
+        {0,0,0,0,0,0,1,1,1,0,0},
+    }, {
+        {0,0,0,0,0,1,1,0,0,0,0},
+        {0,0,0,0,1,0,0,1,0,0,0},
+        {0,0,0,0,1,0,0,0,1,0,0},
+        {0,0,1,1,1,0,0,0,1,0,0},
+        {0,1,0,0,1,0,0,0,1,1,0},
+        {0,1,0,0,0,1,0,1,0,0,1},
+        {1,0,0,0,0,0,1,0,0,0,1},
+        {1,0,1,1,1,0,0,1,0,0,1},
+        {1,1,0,0,0,0,1,0,1,0,1},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {0,1,0,1,1,1,0,1,0,1,0},
+        {0,0,1,0,0,1,0,1,0,1,0},
+        {0,0,0,1,1,1,0,1,0,1,0},
+        {0,0,0,0,0,0,1,1,1,0,0},
+    }, {
+        {0,0,0,0,1,1,0,0,0,0,0},
+        {0,0,0,1,0,0,1,0,0,0,0},
+        {0,0,0,1,0,0,0,1,1,0,0},
+        {0,0,1,1,0,0,0,1,0,1,0},
+        {0,1,0,1,0,0,0,1,0,1,0},
+        {0,1,0,0,1,0,1,0,0,0,1},
+        {1,0,0,0,0,1,0,0,0,0,1},
+        {1,0,1,1,1,0,0,1,0,0,1},
+        {1,1,0,0,0,0,1,0,1,0,1},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {1,0,0,0,0,1,0,1,0,1,0},
+        {0,1,0,1,1,1,0,1,0,1,0},
+        {0,0,1,0,0,1,0,1,0,1,0},
+        {0,0,0,1,1,1,0,1,0,1,0},
+        {0,0,0,0,0,0,1,1,1,0,0},
+    }
 };
-
+ 
 static void flappy_random_pilar(GameState* const game_state) {
     PILAR pilar; 
 
@@ -84,6 +120,14 @@ static void flappy_random_pilar(GameState* const game_state) {
     game_state->pilars[game_state->pilars_count % FLAPPY_PILAR_MAX] = pilar;
 }
 
+static void flappy_game_tick(GameState* const game_state) {
+    game_state->bird.gravity += FLAPPY_GRAVITY_TICK; 
+    game_state->bird.point.y += game_state->bird.gravity;
+}
+
+static void flappy_game_flap(GameState* const game_state) {
+    game_state->bird.gravity = FLAPPY_GRAVITY_JUMP;
+}
 static void flappy_game_state_init(GameState* const game_state) {
     BIRD bird; 
     bird.gravity = 0.0f; 
@@ -108,7 +152,29 @@ static void flappy_game_render_callback(Canvas* const canvas, void* ctx) {
     // Flappy 
     for (int h = 0; h < FLAPPY_BIRD_HEIGHT; h++) {
         for (int w = 0; w < FLAPPY_BIRD_WIDTH; w++) { 
-            if (bird_array[h][w] == 1) {
+            
+            // int bird = 0; 
+            // if (game_state->bird.gravity > -0.5) {
+
+            // } else { 
+
+            // }
+             
+            // switch(game_state->bird.gravity) {
+            //     case < -1.1:
+            //         bird = 1;
+            //         break;
+            // }
+            // if (g->gravity < -1.1)
+            //     px = bird_array[x][y];
+            // else { 
+            //     if (g->gravity < -0.5)
+            //         px = bird_mid[x][y];
+            //     else
+            //         px = bird_up[x][y];
+            // }
+
+            if (bird[0][h][w] == 1) {
                 int x = game_state->bird.point.x + w; 
                 int y = game_state->bird.point.y + h; 
 
@@ -128,12 +194,12 @@ static void flappy_game_input_callback(InputEvent* input_event, osMessageQueueId
     osMessageQueuePut(event_queue, &event, 0, osWaitForever);
 }
 
-// static void snake_game_update_timer_callback(osMessageQueueId_t event_queue) {
-//     furi_assert(event_queue);
+static void snake_game_update_timer_callback(osMessageQueueId_t event_queue) {
+    furi_assert(event_queue);
 
-//     SnakeEvent event = {.type = EventTypeTick};
-//     osMessageQueuePut(event_queue, &event, 0, 0);
-// }
+    GameEvent event = {.type = EventTypeTick};
+    osMessageQueuePut(event_queue, &event, 0, 0);
+}
 
 int32_t flappy_game_app(void* p) { 
     osMessageQueueId_t event_queue = osMessageQueueNew(8, sizeof(GameEvent), NULL); 
@@ -153,9 +219,9 @@ int32_t flappy_game_app(void* p) {
     view_port_draw_callback_set(view_port, flappy_game_render_callback, &state_mutex);
     view_port_input_callback_set(view_port, flappy_game_input_callback, event_queue);
  
-    // osTimerId_t timer =
-    //     osTimerNew(snake_game_update_timer_callback, osTimerPeriodic, event_queue, NULL);
-    // osTimerStart(timer, osKernelGetTickFreq() / 4);
+    osTimerId_t timer =
+        osTimerNew(snake_game_update_timer_callback, osTimerPeriodic, event_queue, NULL);
+    osTimerStart(timer, osKernelGetTickFreq() / 4);
     
     // Open GUI and register view_port
     Gui* gui = furi_record_open("gui"); 
@@ -172,24 +238,28 @@ int32_t flappy_game_app(void* p) {
                 if(event.input.type == InputTypePress) {  
                     switch(event.input.key) {
                     case InputKeyUp: 
-                            game_state->bird.point.y++;
+                            game_state->bird.point.y--;
                         break; 
                     case InputKeyDown: 
-                            game_state->bird.point.y--;
+                            game_state->bird.point.y++;
                         break; 
                     case InputKeyRight: 
                             game_state->bird.point.x++;
                         break; 
                     case InputKeyLeft:  
-                            game_state->bird.point.y--;
+                            game_state->bird.point.x--;
                         break; 
                     case InputKeyOk: 
+                        flappy_game_flap(game_state);
+                        break;
                     case InputKeyBack: 
                         processing = false;
                         break;
                     }
                 }
-            } 
+            } else if(event.type == EventTypeTick) {
+                flappy_game_tick(game_state);
+            }
         } else {
             FURI_LOG_D(TAG, "osMessageQueue: event timeout");
             // event timeout
