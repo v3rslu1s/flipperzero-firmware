@@ -75,11 +75,13 @@ static void flappy_game_render_callback(Canvas* const canvas, void* ctx) {
 
     // Flappy 
     for (int h = 0; h < BIRD_HEIGHT; h++) {
-        for (int w = 0; w < BIRD_WIDTH; w++) {
-            int x = game_state->bird.point.x + w; 
-            int y = game_state->bird.point.y + h; 
+        for (int w = 0; w < BIRD_WIDTH; w++) { 
+            if (bird_array[h][w] == 1) {
+                int x = game_state->bird.point.x + w; 
+                int y = game_state->bird.point.y + h; 
 
-            canvas_draw_dot(canvas, x, y);
+                canvas_draw_dot(canvas, x, y);
+            }
         }
     }
     
