@@ -3,11 +3,16 @@
 #include <input/input.h>
 #include <stdlib.h>
 
+#include "bird.h"
+
 #define TAG "Flappy"
 
 #define FLAPPY_BIRD_HEIGHT  15
 #define FLAPPY_BIRD_WIDTH   10
-#define FLAPPY_PILAR_MAX    6
+
+#define FLAPPY_PILAR_MAX    6 
+#define FLAPPY_PILAR_DIST   35
+
 #define FLAPPY_GAB_HEIGHT   25
 #define FLAPPY_GAB_WIDTH    3
 
@@ -42,6 +47,7 @@ typedef struct {
 typedef struct {
     BIRD bird; 
 
+    int points;
     int pilars_count;
     PILAR pilars[FLAPPY_PILAR_MAX];
 } GameState; 
@@ -58,63 +64,13 @@ typedef enum {
     DirectionLeft,
 } Direction;
 
-uint8_t bird[3][15][11] = {
-    {
-        {0,0,0,0,0,0,1,1,0,0,0},
-        {0,0,0,0,0,1,0,0,1,0,0},
-        {0,0,0,0,0,1,0,0,0,1,0},
-        {0,0,1,1,1,1,0,0,0,1,0},
-        {0,1,0,0,0,1,0,0,0,1,0},
-        {0,1,0,0,0,0,1,0,1,0,1},
-        {1,0,0,0,0,0,0,1,0,0,1},
-        {1,0,1,1,1,0,0,1,0,0,1},
-        {1,1,0,0,0,0,1,0,1,0,1},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {0,1,0,1,1,1,0,1,0,1,0},
-        {0,0,1,0,0,1,0,1,0,1,0},
-        {0,0,0,1,1,1,0,1,0,1,0},
-        {0,0,0,0,0,0,1,1,1,0,0},
-    }, {
-        {0,0,0,0,0,1,1,0,0,0,0},
-        {0,0,0,0,1,0,0,1,0,0,0},
-        {0,0,0,0,1,0,0,0,1,0,0},
-        {0,0,1,1,1,0,0,0,1,0,0},
-        {0,1,0,0,1,0,0,0,1,1,0},
-        {0,1,0,0,0,1,0,1,0,0,1},
-        {1,0,0,0,0,0,1,0,0,0,1},
-        {1,0,1,1,1,0,0,1,0,0,1},
-        {1,1,0,0,0,0,1,0,1,0,1},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {0,1,0,1,1,1,0,1,0,1,0},
-        {0,0,1,0,0,1,0,1,0,1,0},
-        {0,0,0,1,1,1,0,1,0,1,0},
-        {0,0,0,0,0,0,1,1,1,0,0},
-    }, {
-        {0,0,0,0,1,1,0,0,0,0,0},
-        {0,0,0,1,0,0,1,0,0,0,0},
-        {0,0,0,1,0,0,0,1,1,0,0},
-        {0,0,1,1,0,0,0,1,0,1,0},
-        {0,1,0,1,0,0,0,1,0,1,0},
-        {0,1,0,0,1,0,1,0,0,0,1},
-        {1,0,0,0,0,1,0,0,0,0,1},
-        {1,0,1,1,1,0,0,1,0,0,1},
-        {1,1,0,0,0,0,1,0,1,0,1},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {1,0,0,0,0,1,0,1,0,1,0},
-        {0,1,0,1,1,1,0,1,0,1,0},
-        {0,0,1,0,0,1,0,1,0,1,0},
-        {0,0,0,1,1,1,0,1,0,1,0},
-        {0,0,0,0,0,0,1,1,1,0,0},
-    }
-};
- 
-static void flappy_random_pilar(GameState* const game_state) {
+static void flappy_game_random_pilar(GameState* const game_state) {
     PILAR pilar; 
 
     pilar.visible = 1; 
     pilar.height = random() % (FLIPPER_LCD_HEIGHT - FLAPPY_GAB_HEIGHT) + 1;
+    pilar.point.y = 0; 
+    pilar.point.x = FLIPPER_LCD_WIDTH + FLAPPY_GAB_WIDTH + 1;
 
     game_state->pilars_count++;
     game_state->pilars[game_state->pilars_count % FLAPPY_PILAR_MAX] = pilar;
@@ -123,11 +79,34 @@ static void flappy_random_pilar(GameState* const game_state) {
 static void flappy_game_tick(GameState* const game_state) {
     game_state->bird.gravity += FLAPPY_GRAVITY_TICK; 
     game_state->bird.point.y += game_state->bird.gravity;
+
+    // Checking the location of the last respawned pilar. 
+    PILAR * pilar = &game_state->pilars[game_state->pilars_count % FLAPPY_PILAR_MAX];
+    if (pilar->point.x == (FLIPPER_LCD_WIDTH - FLAPPY_PILAR_DIST))
+        flappy_game_random_pilar(game_state);
+
+    // Updating the position/status of the pilars (visiblity, posotion, game points)
+    for (int i = 0; i < FLAPPY_PILAR_MAX; i++) {
+        PILAR * pilar = &game_state->pilars[i];
+
+        if (pilar != NULL && pilar->visible && pilar->point.x > 0) {
+            pilar->point.x--;
+
+            if (game_state->bird.point.x >= pilar->point.x + FLAPPY_GAB_WIDTH &&
+                    pilar->passed == 0) {
+                pilar->passed = 1;
+                game_state->points++;
+            }
+            if (pilar->point.x < -FLAPPY_PILAR_DIST) 
+                pilar->visible = 0;  
+        }
+    }
 }
 
 static void flappy_game_flap(GameState* const game_state) {
     game_state->bird.gravity = FLAPPY_GRAVITY_JUMP;
 }
+
 static void flappy_game_state_init(GameState* const game_state) {
     BIRD bird; 
     bird.gravity = 0.0f; 
@@ -138,9 +117,9 @@ static void flappy_game_state_init(GameState* const game_state) {
     game_state->pilars_count = 0;
     memset(game_state->pilars, 0, sizeof(game_state->pilars));
 
-    flappy_random_pilar(game_state);
+    flappy_game_random_pilar(game_state);
 }
-
+ 
 static void flappy_game_render_callback(Canvas* const canvas, void* ctx) { 
     const GameState* game_state = acquire_mutex((ValueMutex*)ctx, 25);
     if(game_state == NULL) {
@@ -148,35 +127,34 @@ static void flappy_game_render_callback(Canvas* const canvas, void* ctx) {
     }
 
     canvas_draw_frame(canvas, 0, 0, 128, 64);
+ 
+    // Pilars 
+    for (int i = 0; i < FLAPPY_PILAR_MAX; i++) {
+        const PILAR * pilar = &game_state->pilars[i];
+        if (pilar != NULL && pilar->visible) {
+            
+            canvas_draw_frame(canvas, pilar->point.x, pilar->point.y, 
+                                FLAPPY_GAB_WIDTH, pilar->height);
 
-    // Flappy 
+            canvas_draw_frame(canvas, pilar->point.x, pilar->point.y + pilar->height + FLAPPY_GAB_HEIGHT, 
+                                FLAPPY_GAB_WIDTH, FLIPPER_LCD_HEIGHT - pilar->height - FLAPPY_GAB_HEIGHT);
+        }
+    }
+
+    // Flappy
     for (int h = 0; h < FLAPPY_BIRD_HEIGHT; h++) {
         for (int w = 0; w < FLAPPY_BIRD_WIDTH; w++) { 
-            
-            // int bird = 0; 
-            // if (game_state->bird.gravity > -0.5) {
+            // Switch animation
+            int bird = 0; 
+            if (game_state->bird.gravity < -0.5)
+                bird = 1;
+            else
+                bird = 2;
 
-            // } else { 
-
-            // }
-             
-            // switch(game_state->bird.gravity) {
-            //     case < -1.1:
-            //         bird = 1;
-            //         break;
-            // }
-            // if (g->gravity < -1.1)
-            //     px = bird_array[x][y];
-            // else { 
-            //     if (g->gravity < -0.5)
-            //         px = bird_mid[x][y];
-            //     else
-            //         px = bird_up[x][y];
-            // }
-
-            if (bird[0][h][w] == 1) {
-                int x = game_state->bird.point.x + w; 
-                int y = game_state->bird.point.y + h; 
+            // Draw bird pixels
+            if (bird_array[bird][h][w] == 1) {
+                int x = game_state->bird.point.x + h; 
+                int y = game_state->bird.point.y + w; 
 
                 canvas_draw_dot(canvas, x, y);
             }
