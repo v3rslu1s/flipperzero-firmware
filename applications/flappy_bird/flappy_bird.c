@@ -11,13 +11,13 @@
 #define FLAPPY_BIRD_WIDTH   10
 
 #define FLAPPY_PILAR_MAX    6 
-#define FLAPPY_PILAR_DIST   35
+#define FLAPPY_PILAR_DIST   45
 
 #define FLAPPY_GAB_HEIGHT   25
-#define FLAPPY_GAB_WIDTH    3
+#define FLAPPY_GAB_WIDTH    5
 
 #define FLAPPY_GRAVITY_JUMP -1.1
-#define FLAPPY_GRAVITY_TICK 0.15
+#define FLAPPY_GRAVITY_TICK 0.10
 
 #define FLIPPER_LCD_WIDTH   128
 #define FLIPPER_LCD_HEIGHT  64
@@ -88,10 +88,9 @@ static void flappy_game_tick(GameState* const game_state) {
     // Updating the position/status of the pilars (visiblity, posotion, game points)
     for (int i = 0; i < FLAPPY_PILAR_MAX; i++) {
         PILAR * pilar = &game_state->pilars[i];
+        pilar->point.x--;
 
         if (pilar != NULL && pilar->visible && pilar->point.x > 0) {
-            pilar->point.x--;
-
             if (game_state->bird.point.x >= pilar->point.x + FLAPPY_GAB_WIDTH &&
                     pilar->passed == 0) {
                 pilar->passed = 1;
@@ -110,7 +109,7 @@ static void flappy_game_flap(GameState* const game_state) {
 static void flappy_game_state_init(GameState* const game_state) {
     BIRD bird; 
     bird.gravity = 0.0f; 
-    bird.point.x = 20; 
+    bird.point.x = 5; 
     bird.point.y = 32;
 
     game_state->bird = bird; 
@@ -132,15 +131,15 @@ static void flappy_game_render_callback(Canvas* const canvas, void* ctx) {
     for (int i = 0; i < FLAPPY_PILAR_MAX; i++) {
         const PILAR * pilar = &game_state->pilars[i];
         if (pilar != NULL && pilar->visible) {
-            
+            canvas_draw_dot(canvas, pilar->point.x, pilar->point.y + 10);
             canvas_draw_frame(canvas, pilar->point.x, pilar->point.y, 
                                 FLAPPY_GAB_WIDTH, pilar->height);
 
             canvas_draw_frame(canvas, pilar->point.x, pilar->point.y + pilar->height + FLAPPY_GAB_HEIGHT, 
                                 FLAPPY_GAB_WIDTH, FLIPPER_LCD_HEIGHT - pilar->height - FLAPPY_GAB_HEIGHT);
         }
-    }
-
+    } 
+    
     // Flappy
     for (int h = 0; h < FLAPPY_BIRD_HEIGHT; h++) {
         for (int w = 0; w < FLAPPY_BIRD_WIDTH; w++) { 
@@ -172,7 +171,7 @@ static void flappy_game_input_callback(InputEvent* input_event, osMessageQueueId
     osMessageQueuePut(event_queue, &event, 0, osWaitForever);
 }
 
-static void snake_game_update_timer_callback(osMessageQueueId_t event_queue) {
+static void flappy_game_update_timer_callback(osMessageQueueId_t event_queue) {
     furi_assert(event_queue);
 
     GameEvent event = {.type = EventTypeTick};
@@ -198,8 +197,8 @@ int32_t flappy_game_app(void* p) {
     view_port_input_callback_set(view_port, flappy_game_input_callback, event_queue);
  
     osTimerId_t timer =
-        osTimerNew(snake_game_update_timer_callback, osTimerPeriodic, event_queue, NULL);
-    osTimerStart(timer, osKernelGetTickFreq() / 4);
+        osTimerNew(flappy_game_update_timer_callback, osTimerPeriodic, event_queue, NULL);
+    osTimerStart(timer, osKernelGetTickFreq() / 22);
     
     // Open GUI and register view_port
     Gui* gui = furi_record_open("gui"); 
